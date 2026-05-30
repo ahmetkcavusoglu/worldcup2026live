@@ -340,7 +340,7 @@ function getStatus(m) {
   if(s==='IN_PLAY'||s==='LIVE') return[`${m.minute||''}' LIVE`,'s-live',true];
   if(s==='PAUSED'||s==='HALFTIME') return['HT','s-live',true];
   if(s==='FINISHED') return['FT','s-ft',false];
-  return[fmtTime(m.utcDate),'s-sched',false];
+  return['','s-sched',false];
 }
 
 function matchCard(m) {
@@ -352,7 +352,7 @@ function matchCard(m) {
   const sh=isLive?(lhs??'–'):(hs!=null?hs:'–');
   const sa=isLive?(las??'–'):(as2!=null?as2:'–');
   const isScheduled=m.status==='TIMED'||m.status==='SCHEDULED';
-  const scoreHtml=isScheduled
+const scoreHtml=isScheduled
     ?`<div class="score-nums sched">${fmtTime(m.utcDate)}</div>`
     :`<div class="score-nums ${isLive?'live':''}">${sh} – ${sa}</div>`;
   const group=(m.group||m.stage||'').replace('GROUP_','Group ').replace('_',' ');
