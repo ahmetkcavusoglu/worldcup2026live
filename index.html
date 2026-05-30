@@ -350,8 +350,8 @@ footer {
 
 <script>
 const API_KEY = '44fe8dc7cb964aea8692ba87dc91f3a2';
-const BASE = 'https://api.football-data.org/v4';
-const WC_ID = 2000; // FIFA World Cup competition ID
+const BASE = 'https://wc2026-api.ahmetkcavusoglu.workers.dev';
+const WC_ID = 2000;
 
 const FLAGS = {
   'Qatar':'🇶🇦','Germany':'🇩🇪','Brazil':'🇧🇷','France':'🇫🇷','Spain':'🇪🇸',
@@ -435,18 +435,14 @@ function matchCard(m) {
 }
 
 async function fetchMatches() {
-  const res = await fetch(`${BASE}/competitions/${WC_ID}/matches`, {
-    headers: { 'X-Auth-Token': API_KEY }
-  });
+const res = await fetch(`${BASE}?path=/competitions/${WC_ID}/matches`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
   return data.matches || [];
 }
 
 async function fetchStandings() {
-  const res = await fetch(`${BASE}/competitions/${WC_ID}/standings`, {
-    headers: { 'X-Auth-Token': API_KEY }
-  });
+const res = await fetch(`${BASE}?path=/competitions/${WC_ID}/standings`);
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   const data = await res.json();
   return data.standings || [];
