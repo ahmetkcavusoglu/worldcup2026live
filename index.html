@@ -554,9 +554,9 @@ async function init(){
     }
     allEl.innerHTML=matches.length?matches.map(matchCard).join(''):'<div class="empty-box">No schedule data.</div>';
     document.getElementById('update-time').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  }catch(e){
-    document.getElementById('today-matches').innerHTML=`<div class="error-box">Could not load data. ${e.message}</div>`;
-    document.getElementById('all-matches').innerHTML=`<div class="error-box">Could not load data.</div>`;
+}catch(e){
+    console.warn('Fetch failed, keeping old data:', e.message);
+    document.getElementById('update-time').textContent='⚠ Update failed — retrying...';
   }
   try{renderStandings(await fetchStandings());}
   catch{document.getElementById('standings-container').innerHTML='<div class="empty-box">Standings will appear after June 11.</div>';}
