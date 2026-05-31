@@ -548,7 +548,7 @@ async function init(){
     const allEl=document.getElementById('all-matches');
     if(today.length){todayEl.innerHTML=today.map(matchCard).join('');}
     else{
-      const upcoming=matches.filter(m=>new Date(m.utcDate)>new Date()).slice(0,8);
+      const upcoming=matches.filter(m=>new Date(m.utcDate)>new Date()&&m.homeTeam.name).slice(0,8);
       todayEl.innerHTML=`<p style="font-size:13px;color:var(--text3);margin-bottom:12px">No matches today — next upcoming:</p>`+
         (upcoming.length?upcoming.map(matchCard).join(''):'<div class="empty-box">No upcoming matches found.</div>');
     }
