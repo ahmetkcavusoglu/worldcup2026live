@@ -179,6 +179,27 @@ main{max-width:860px;margin:0 auto;padding:1.5rem 1rem 3rem}
 .s-live{color:var(--live);animation:pulse 1.5s ease-in-out infinite}
 .s-ft{color:var(--text3)}
 .s-sched{color:var(--text3)}
+
+/* ── Win probability bar ── */
+.winprob{grid-column:1/-1;margin-top:6px}
+.winprob-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--surface3)}
+.winprob-seg{height:100%;transition:width 0.5s ease}
+.wp-home{background:var(--accent)}
+.wp-draw{background:var(--text3)}
+.wp-away{background:var(--accent2)}
+.winprob-legend{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px;letter-spacing:0.03em}
+
+/* ── Update pulse ── */
+.update-time.flash{color:var(--live);transition:color 0.1s}
+
+/* ── Reddit thread button ── */
+.reddit-btn{
+  background:var(--surface2);border:1px solid var(--border);border-radius:6px;
+  font-size:10px;font-weight:600;color:var(--text3);padding:3px 8px;cursor:pointer;
+  font-family:var(--font-b);transition:border-color 0.2s,color 0.2s;
+  display:inline-flex;align-items:center;gap:4px;text-decoration:none;
+}
+.reddit-btn:hover{border-color:#ff4500;color:#ff4500}
 .match-footer{
   grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;
   font-size:11px;color:var(--text3);
@@ -286,6 +307,29 @@ main{max-width:860px;margin:0 auto;padding:1.5rem 1rem 3rem}
 .bm-team.winner .bm-name{color:var(--live);font-weight:600}
 .bm-score{font-family:var(--font-d);font-size:1rem;color:var(--text2);min-width:14px;text-align:right}
 .bm-meta{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;text-align:center;border-top:1px solid var(--border);padding-top:4px}
+
+/* ── Live freshness pulse ── */
+.refresh-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--live);margin-right:5px;vertical-align:middle}
+.refresh-dot.flash{animation:flashpulse 1s ease-out}
+@keyframes flashpulse{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(34,212,94,0.6)}100%{transform:scale(1);box-shadow:0 0 0 8px rgba(34,212,94,0)}}
+
+/* ── Win probability bar ── */
+.winprob{grid-column:1/-1;margin-top:6px}
+.winprob-bar{display:flex;height:6px;border-radius:4px;overflow:hidden;background:var(--surface3)}
+.wp-h{background:var(--live)}
+.wp-d{background:var(--text3)}
+.wp-a{background:var(--accent)}
+.winprob-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:0.04em}
+
+/* ── Match stats bars ── */
+.mstats{grid-column:1/-1;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.mstat-row{display:flex;flex-direction:column;gap:3px}
+.mstat-top{display:flex;justify-content:space-between;font-size:11px;color:var(--text2)}
+.mstat-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.05em;text-align:center}
+.mstat-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;background:var(--surface3)}
+.mstat-bar .ms-h{background:var(--live)}
+.mstat-bar .ms-a{background:var(--accent)}
+
 footer{border-top:1px solid var(--border);text-align:center;padding:1.5rem;font-size:11px;color:var(--text3)}
 footer a{color:var(--text3);text-decoration:none}
 footer a:hover{color:var(--text2)}
@@ -535,6 +579,7 @@ const WORKER = 'https://wc2026-api.ahmetkcavusoglu.workers.dev';
 const WC_ID = 2000;
 
 let LATEST_MATCHES = [];
+let LAST_UPDATE = 0;
 
 /* ── Theme ── */
 function applyTheme(t){
@@ -687,16 +732,66 @@ function matchCard(m){
   const reminder=isScheduled
     ? `<button class="mini-btn" onclick="addToCalendar('${m.utcDate}','${hn}','${an}','${vn}')">📅 Remind</button>`
     : '';
+  // Win probability — only if API provides it (no fabricated stats)
+  const wp=m.odds||m.winProbability||m.probabilities;
+  let wpHtml='';
+  if(wp){
+    const rawH=wp.homeWin??wp.home, rawD=wp.draw, rawA=wp.awayWin??wp.away;
+    if(rawH!=null||rawA!=null){
+      const scale=v=>v==null?0:(v<=1?v*100:v);
+      const ph=Math.round(scale(rawH)), pd=Math.round(scale(rawD)), pa=Math.round(scale(rawA));
+      const tot=ph+pd+pa;
+      if(tot>0){
+        wpHtml=`<div class="winprob">
+          <div class="winprob-bar">
+            <div class="wp-h" style="width:${(ph/tot*100).toFixed(1)}%"></div>
+            <div class="wp-d" style="width:${(pd/tot*100).toFixed(1)}%"></div>
+            <div class="wp-a" style="width:${(pa/tot*100).toFixed(1)}%"></div>
+          </div>
+          <div class="winprob-labels"><span>${home.tla||'Home'} ${ph}%</span><span>Draw ${pd}%</span><span>${pa}% ${away.tla||'Away'}</span></div>
+        </div>`;
+      }
+    }
+  }
+  // Match statistics — only if API provides them (no fabricated stats)
+  let statsHtml='';
+  const st=m.statistics||m.stats;
+  if(st&&(st.home||st.away)){
+    const sh2=st.home||{}, sa2=st.away||{};
+    const STAT_DEFS=[
+      ['possession','ball_possession','Possession','%'],
+      ['shots','total_shots','Shots',''],
+      ['shotsOnGoal','shots_on_target','On Target',''],
+      ['fouls','fouls','Fouls',''],
+      ['corners','corner_kicks','Corners','']
+    ];
+    const rows=STAT_DEFS.map(([k1,k2,label,suf])=>{
+      const hv=sh2[k1]??sh2[k2], av=sa2[k1]??sa2[k2];
+      if(hv==null&&av==null)return '';
+      const h=Number(hv)||0, a=Number(av)||0, tot=h+a;
+      const hpct=tot>0?(h/tot*100):50, apct=tot>0?(a/tot*100):50;
+      return `<div class="mstat-row">
+        <div class="mstat-top"><span>${hv??0}${suf}</span><span class="mstat-label">${label}</span><span>${av??0}${suf}</span></div>
+        <div class="mstat-bar"><div class="ms-h" style="width:${hpct.toFixed(0)}%"></div><div class="ms-a" style="width:${apct.toFixed(0)}%"></div></div>
+      </div>`;
+    }).filter(Boolean).join('');
+    if(rows)statsHtml=`<div class="mstats">${rows}</div>`;
+  }
+  const redditQ=encodeURIComponent(`${home.name} ${away.name}`);
+  const redditLink=`https://www.reddit.com/r/soccer/search/?q=${redditQ}&restrict_sr=1&sort=new`;
   return `<div class="match-card ${isLive?'live-match':''} ${fav?'fav-match':''}" id="match-${m.id}">
     <div class="team-side"><div class="team-flag">${teamFlag(home)}</div><div><div class="team-name">${home.name}</div><div class="team-code">${home.tla||''}</div></div></div>
     <div class="score-center">${scoreHtml}<div class="match-status ${statusCls}">${statusTxt}</div></div>
     <div class="team-side right"><div class="team-flag">${teamFlag(away)}</div><div><div class="team-name">${away.name}</div><div class="team-code">${away.tla||''}</div></div></div>
+    ${wpHtml}
+    ${statsHtml}
     <div class="match-footer">
       <span>${fmtDate(m.utcDate)}${m.venue?` · ${m.venue}`:''}</span>
       <span class="match-actions">
         <button class="fav-star ${isFav(home.name)?'on':''}" title="Favorite ${home.name}" onclick="toggleFav('${hn}')">${isFav(home.name)?'★':'☆'} ${home.tla||''}</button>
         <button class="fav-star ${isFav(away.name)?'on':''}" title="Favorite ${away.name}" onclick="toggleFav('${an}')">${isFav(away.name)?'★':'☆'} ${away.tla||''}</button>
         ${reminder}
+        <a class="mini-btn" href="${redditLink}" target="_blank" rel="noopener" title="r/soccer match thread">💬 r/soccer</a>
         <button class="mini-btn" onclick="shareMatch('${m.id}','${hn}','${an}')">🔗</button>
         <span class="group-badge">${group}</span>
       </span>
@@ -774,13 +869,34 @@ async function init(){
     LATEST_MATCHES=matches;
     renderMatches(matches);
     renderBracket(matches);
-    document.getElementById('update-time').textContent='Updated '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    LAST_UPDATE=Date.now();
+    tickUpdate();
+    flashUpdate();
   }catch(e){
     console.warn('Fetch failed, keeping old data:', e.message);
-    document.getElementById('update-time').textContent='⚠ Update failed — retrying...';
+    const ut=document.getElementById('update-time');
+    if(ut)ut.textContent='⚠ Update failed — retrying...';
   }
   try{renderStandings(await fetchStandings());}
   catch{document.getElementById('standings-container').innerHTML='<div class="empty-box">Standings will appear after June 11.</div>';}
+}
+
+function flashUpdate(){
+  const dot=document.getElementById('refresh-dot');
+  if(!dot)return;
+  dot.classList.remove('flash');
+  void dot.offsetWidth; // reflow → animasyonu yeniden tetikle
+  dot.classList.add('flash');
+}
+function tickUpdate(){
+  const ut=document.getElementById('update-time');
+  if(!ut||!LAST_UPDATE)return;
+  const secs=Math.floor((Date.now()-LAST_UPDATE)/1000);
+  let txt;
+  if(secs<5)txt='Updated just now';
+  else if(secs<60)txt=`Updated ${secs}s ago`;
+  else{const mins=Math.floor(secs/60);txt=`Updated ${mins}m ago`;}
+  ut.innerHTML=`<span class="refresh-dot" id="refresh-dot"></span>${txt}`;
 }
 
 /* ── Knockout bracket ── */
@@ -866,10 +982,17 @@ init().then(()=>{
   }
 });
 setInterval(init,60000);
+setInterval(tickUpdate,1000);
 if(updateCountdown()){
   const cdTimer=setInterval(()=>{ if(!updateCountdown()) clearInterval(cdTimer); },1000);
 }
 </script>
-<script src="https://pl29594841.effectivecpmnetwork.com/78/d2/a9/78d2a99f3f0242ebc49cce337117d7ff.js"></script>
+<!--
+  ADSTERRA NOTU:
+  Eski pop-under / popunder script'i kaldırıldı (bounce rate + SEO'ya zararlıydı).
+  Yerine Adsterra panelinden NATIVE BANNER veya BANNER (300x250 / 728x90) birimi
+  oluştur, verilen script'i buraya yapıştır. Native banner sayfa akışına gömülür,
+  kullanıcıyı kaçırmaz. İstersen reklam birimini maç listesi ile footer arasına koy.
+-->
 </body>
 </html>
